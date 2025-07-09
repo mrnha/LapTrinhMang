@@ -21,7 +21,14 @@ public class User {
 
     private String password;
 
+    @Column(name = "display_name")
     private String displayName;
+
+    @Column(unique = true)
+    private String email;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
 
     private boolean online;
 
@@ -30,4 +37,17 @@ public class User {
     @Column(name = "roles")
     @Builder.Default
     private Set<String> roles = new HashSet<>();
+
+    @Column(name = "public_key", columnDefinition = "TEXT")
+    private String publicKey;
+
+    @PrePersist
+    protected void onCreate() {
+        if (displayName == null || displayName.isEmpty()) {
+            displayName = username;
+        }
+        if (avatarUrl == null || avatarUrl.isEmpty()) {
+            avatarUrl = "/images/default-avatar.png";
+        }
+    }
 }

@@ -33,8 +33,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers("/api/**", "/ws/**", "/app/**", "/topic/**", "/queue/**", "/user/**", "/profile/update")
+            )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/register", "/login", "/api/auth/**", "/chat/**", "/topic/**", "/app/**", "/queue/**", "/user/**", "/api/chat/history/**", "/.well-known/**", "/api/friends/**").permitAll()
+                .requestMatchers("/register", "/login", "/api/auth/**").permitAll()
+                .requestMatchers("/ws/**", "/topic/**", "/app/**", "/queue/**", "/user/**").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -45,17 +51,7 @@ public class SecurityConfig {
             .logout(logout -> logout
                 .logoutSuccessUrl("/login?logout")
                 .permitAll()
-            )
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .ignoringRequestMatchers("/api/auth/**", "/chat/**", "/topic/**", "/app/**", "/queue/**", "/user/**", "/api/chat/history/**", "/.well-known/**", "/api/friends/**")
-            )
-            .sessionManagement(session -> session
-                .maximumSessions(10)
-                .maxSessionsPreventsLogin(false)
-            )
-            .authenticationProvider(authenticationProvider());
+            );
 
         return http.build();
     }

@@ -1,0 +1,5 @@
+| Thành viên | Công việc chính | File/Module liên quan |
+|------------|----------------|----------------------|
+| Người 1    | Backend, bảo mật, user, cấu hình | SecurityConfig.java, CustomUserDetailsService.java, CustomUserDetails.java, UserController.java, UserService.java, UserRepository.java, LoginRequest.java, RegisterRequest.java, WebConfig.java, WebSocketConfig.java, CustomErrorController.java |
+| Người 2    | Chat, realtime, phòng chat | ChatController.java, ChatRoomController.java, ChatRoomService.java, ChatRoomRepository.java, Message.java, RoomMessage.java, RoomMessageRepository.java, ChatMessage.java, websocket/ (nếu có), chat.html |
+| Người 3    | Quản trị, giao diện, bảo trì, profile | messmini-admin/, AdminDashboardController.java, UserAdminController.java, MaintenanceController.java, MaintenanceFilter.java, maintenance.html, ProfileController.java, FriendshipController.java, FriendshipService.java, FriendshipRepository.java, profile.html, login.html, register.html, error.html, users.html | 

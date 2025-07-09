@@ -22,11 +22,15 @@ public class RoomMessage {
 
     private String content;
     private LocalDateTime timestamp;
-    private boolean read;
+    @Column(name = "is_read")
+    private boolean isRead;
 
     @PrePersist
     protected void onCreate() {
         timestamp = LocalDateTime.now();
-        read = false;
+        isRead = false;
     }
+
+    public boolean isRead() { return isRead; }
+    public void setRead(boolean read) { this.isRead = read; }
 } 

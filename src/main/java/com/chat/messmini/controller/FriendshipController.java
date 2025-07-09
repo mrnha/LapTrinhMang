@@ -146,4 +146,27 @@ public class FriendshipController {
                     .body(Map.of("error", "Error rejecting friend request: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/api/friendships/unfriend/{friendId}")
+    public ResponseEntity<?> unfriendUser(@PathVariable Long friendId, Authentication authentication) {
+        try {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User user = userService.findByUsername(userDetails.getUsername());
+            
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "User not found"));
+            }
+            
+            friendshipService.unfriend(user.getId(), friendId);
+            return ResponseEntity.ok(Map.of("message", "Successfully unfriended user"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error unfriending user: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error unfriending user: " + e.getMessage()));
+        }
+    }
 } 

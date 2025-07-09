@@ -103,5 +103,20 @@ public class UserService implements UserDetailsService {
         log.info("Getting all users");
         return userRepository.findAll();
     }
+
+    @Transactional
+    public void updatePublicKey(Long userId, String publicKey) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setPublicKey(publicKey);
+            userRepository.save(user);
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public String getPublicKeyByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .map(User::getPublicKey)
+                .orElse(null);
+    }
 }
 

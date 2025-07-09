@@ -32,11 +32,10 @@ public class ChatRoomService {
         room.setDescription(description);
         room.setCreator(creator);
 
-        // Thêm creator vào danh sách thành viên
-        room.getMembers().add(creator);
-
-        // Thêm các thành viên khác
-        memberIds.forEach(memberId -> {
+        // Đảm bảo creator luôn là thành viên
+        Set<Long> allMemberIds = new java.util.HashSet<>(memberIds);
+        allMemberIds.add(creatorId);
+        allMemberIds.forEach(memberId -> {
             User member = userRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("Member not found: " + memberId));
             room.getMembers().add(member);
@@ -94,7 +93,9 @@ public class ChatRoomService {
     public List<ChatRoom> getUserRooms(Long userId) {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("User not found"));
-        return chatRoomRepository.findRoomsByUser(user);
+        List<ChatRoom> rooms = chatRoomRepository.findRoomsByUser(user);
+        log.info("User {} (id={}) is member of {} rooms", user.getUsername(), user.getId(), rooms.size());
+        return rooms;
     }
 
     @Transactional
@@ -107,5 +108,23 @@ public class ChatRoomService {
             message.setRead(true);
             roomMessageRepository.save(message);
         });
+    }
+
+    @Transactional
+    public void deleteRoom(Long roomId, Long userId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+            .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+
+        // Kiểm tra xem người xóa có phải là người tạo phòng không
+        if (!room.getCreator().getId().equals(userId)) {
+            throw new IllegalArgumentException("Only room creator can delete the room");
+        }
+
+        // Xóa tất cả tin nhắn trong phòng
+        roomMessageRepository.deleteByRoomId(roomId);
+
+        // Xóa phòng
+        chatRoomRepository.delete(room);
+        log.info("Room {} deleted by user {}", roomId, userId);
     }
 } 

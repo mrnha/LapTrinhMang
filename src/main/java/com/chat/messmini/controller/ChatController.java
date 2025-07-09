@@ -113,22 +113,26 @@ public class ChatController {
         try {
             SimpMessageHeaderAccessor headers = SimpMessageHeaderAccessor.wrap(event.getMessage());
             String sessionId = headers.getSessionId();
-            String username = headers.getUser().getName();
-            
+            Principal user = headers.getUser();
+            if (user == null) {
+                log.warn("WebSocket connect without Principal");
+                return;
+            }
+            String username = user.getName();
             log.info("User connected: {} with session: {}", username, sessionId);
             
             // Lấy thông tin user từ username
-            User user = userService.findByUsername(username);
-            if (user != null) {
+            User userObj = userService.findByUsername(username);
+            if (userObj != null) {
                 // Lưu sessionId và userId vào map
-                onlineUsersSession.put(sessionId, user.getId());
+                onlineUsersSession.put(sessionId, userObj.getId());
                 // Cập nhật trạng thái online
                 userOnlineStatus.put(username, true);
-                user.setOnline(true);
-                userService.save(user);
+                userObj.setOnline(true);
+                userService.save(userObj);
                 
                 // Thông báo cho tất cả người dùng về trạng thái mới
-                messagingTemplate.convertAndSend("/topic/online-users", user);
+                messagingTemplate.convertAndSend("/topic/online-users", userObj);
                 
                 // Broadcast danh sách người dùng online
                 List<User> onlineUsers = userService.getOnlineUsers();
@@ -144,15 +148,19 @@ public class ChatController {
         try {
             SimpMessageHeaderAccessor headers = SimpMessageHeaderAccessor.wrap(event.getMessage());
             String sessionId = headers.getSessionId();
-            String username = headers.getUser().getName();
-            
+            Principal user = headers.getUser();
+            if (user == null) {
+                log.warn("WebSocket disconnect without Principal");
+                return;
+            }
+            String username = user.getName();
             log.info("User disconnected: {} with session: {}", username, sessionId);
             
             // Lấy userId từ sessionId
             Long userId = onlineUsersSession.remove(sessionId);
             if (userId != null) {
                 // Lấy thông tin user
-                userService.findById(userId).ifPresent(user -> {
+                userService.findById(userId).ifPresent(userObj -> {
                     // Kiểm tra xem user còn session nào khác không
                     boolean hasOtherSessions = onlineUsersSession.values().stream()
                         .anyMatch(id -> id.equals(userId));
@@ -160,11 +168,11 @@ public class ChatController {
                     if (!hasOtherSessions) {
                         // Nếu không còn session nào, cập nhật trạng thái offline
                         userOnlineStatus.remove(username);
-                        user.setOnline(false);
-                        userService.save(user);
+                        userObj.setOnline(false);
+                        userService.save(userObj);
                         
                         // Thông báo cho tất cả người dùng về trạng thái mới
-                        messagingTemplate.convertAndSend("/topic/online-users", user);
+                        messagingTemplate.convertAndSend("/topic/online-users", userObj);
                         
                         // Broadcast danh sách người dùng online
                         List<User> onlineUsers = userService.getOnlineUsers();

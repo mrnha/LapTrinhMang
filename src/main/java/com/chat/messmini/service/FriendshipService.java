@@ -169,4 +169,17 @@ public class FriendshipService {
         return friendshipRepository.existsBySenderIdAndReceiverIdAndStatus(userId1, userId2, Friendship.Status.ACCEPTED) ||
                friendshipRepository.existsBySenderIdAndReceiverIdAndStatus(userId2, userId1, Friendship.Status.ACCEPTED);
     }
+
+    @Transactional
+    public void unfriend(Long userId, Long friendId) {
+        log.info("Unfriending users {} and {}", userId, friendId);
+        
+        if (!existsFriendshipBetweenUsers(userId, friendId)) {
+            throw new IllegalArgumentException("No friendship exists between these users");
+        }
+
+        // Delete both friendship records
+        friendshipRepository.deleteBySenderIdAndReceiverId(userId, friendId);
+        log.info("Successfully unfriended users {} and {}", userId, friendId);
+    }
 } 

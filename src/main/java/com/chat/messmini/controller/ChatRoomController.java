@@ -3,6 +3,7 @@ package com.chat.messmini.controller;
 import com.chat.messmini.entity.ChatRoom;
 import com.chat.messmini.entity.RoomMessage;
 import com.chat.messmini.service.ChatRoomService;
+import com.chat.messmini.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Set;
+import java.security.Principal;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -23,6 +27,7 @@ import java.util.Set;
 public class ChatRoomController {
     private final ChatRoomService chatRoomService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final UserService userService;
 
     @PostMapping
     public ResponseEntity<ChatRoom> createRoom(
@@ -52,14 +57,23 @@ public class ChatRoomController {
     }
 
     @MessageMapping("/chat.room")
-    public void handleRoomMessage(
-            @Payload RoomMessageRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        Long userId = ((com.chat.messmini.security.CustomUserDetails) userDetails).getId();
-        RoomMessage message = chatRoomService.sendMessage(request.getRoomId(), userId, request.getContent());
-        
-        // Gửi tin nhắn đến tất cả thành viên trong phòng
-        messagingTemplate.convertAndSend("/topic/room." + request.getRoomId(), message);
+    public void handleRoomMessage(@Payload RoomMessageRequest request, Principal principal) {
+        try {
+            log.info("Received room message request: roomId={}, content={}", request.getRoomId(), request.getContent());
+            log.info("Principal: {}", principal);
+            if (principal == null) {
+                log.warn("Principal is null, không thể lưu tin nhắn phòng!");
+                return;
+            }
+            String username = principal.getName();
+            com.chat.messmini.entity.User user = userService.findByUsername(username);
+            Long userId = user.getId();
+            RoomMessage message = chatRoomService.sendMessage(request.getRoomId(), userId, request.getContent());
+            log.info("Room message saved with id={}", message.getId());
+            messagingTemplate.convertAndSend("/topic/room." + request.getRoomId(), message);
+        } catch (Exception e) {
+            log.error("Error in handleRoomMessage: {}", e.getMessage(), e);
+        }
     }
 
     @GetMapping("/{roomId}/messages")
@@ -69,8 +83,35 @@ public class ChatRoomController {
 
     @GetMapping
     public ResponseEntity<List<ChatRoom>> getUserRooms(@AuthenticationPrincipal UserDetails userDetails) {
-        Long userId = ((com.chat.messmini.security.CustomUserDetails) userDetails).getId();
-        return ResponseEntity.ok(chatRoomService.getUserRooms(userId));
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        try {
+            Long userId = ((com.chat.messmini.security.CustomUserDetails) userDetails).getId();
+            return ResponseEntity.ok(chatRoomService.getUserRooms(userId));
+        } catch (Exception e) {
+            log.error("Error getting user rooms: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/{roomId}")
+    public ResponseEntity<?> deleteRoom(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            Long userId = ((com.chat.messmini.security.CustomUserDetails) userDetails).getId();
+            chatRoomService.deleteRoom(roomId, userId);
+            return ResponseEntity.ok(Map.of("message", "Room successfully deleted"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error deleting room: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error deleting room: " + e.getMessage()));
+        }
     }
 
     @PostMapping("/{roomId}/read")
